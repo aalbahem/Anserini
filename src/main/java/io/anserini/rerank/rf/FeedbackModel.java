@@ -1,24 +1,8 @@
-/**
- * Anserini: A toolkit for reproducible information retrieval research built on Lucene
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package io.anserini.rerank.rf;
 
-package io.anserini.rerank.lib;
-
-import io.anserini.rerank.Reranker;
 import io.anserini.rerank.RerankerContext;
 import io.anserini.rerank.ScoredDocuments;
+import io.anserini.rerank.lib.Rm3Reranker;
 import io.anserini.util.AnalyzerUtils;
 import io.anserini.util.FeatureVector;
 import org.apache.logging.log4j.LogManager;
@@ -32,24 +16,21 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
-import java.util.stream.Stream;
 
-import static io.anserini.index.generator.LuceneDocumentGenerator.FIELD_BODY;
-import static io.anserini.search.SearchCollection.BREAK_SCORE_TIES_BY_DOCID;
-import static io.anserini.search.SearchCollection.BREAK_SCORE_TIES_BY_TWEETID;
 
-public class Rm3Reranker implements Reranker {
-  private static final Logger LOG = LogManager.getLogger(Rm3Reranker.class);
+public class FeedbackModel {
+  private static final Logger LOG = LogManager.getLogger(FeedbackModel.class);
 
   private final Analyzer analyzer;
   private final String field;
 
   private final int fbTerms;
   private final int fbDocs;
-  private final float originalQueryWeight;
   private final boolean outputQuery;
   private final boolean removeStopWord;
 
@@ -73,79 +54,26 @@ public class Rm3Reranker implements Reranker {
     return fbDocs;
   }
 
-  public float getOriginalQueryWeight() {
-    return originalQueryWeight;
-  }
-
   public boolean isOutputQuery() {
     return outputQuery;
   }
 
-  public Rm3Reranker(Analyzer analyzer, String field, int fbTerms, int fbDocs, float originalQueryWeight, boolean outputQuery) {
-    this(analyzer,field,fbTerms,fbDocs,originalQueryWeight,outputQuery,true);
+  public FeedbackModel(Analyzer analyzer, String field, int fbTerms, int fbDocs, boolean outputQuery) {
+    this(analyzer,field,fbTerms,fbDocs,outputQuery,true);
   }
-  public Rm3Reranker(Analyzer analyzer, String field, int fbTerms, int fbDocs, float originalQueryWeight, boolean outputQuery, boolean removeStopWord) {
+
+  public FeedbackModel(Analyzer analyzer, String field, int fbTerms, int fbDocs,  boolean outputQuery, boolean removeStopWord) {
     this.analyzer = analyzer;
     this.field = field;
     this.fbTerms = fbTerms;
     this.fbDocs = fbDocs;
-    this.originalQueryWeight = originalQueryWeight;
     this.outputQuery = outputQuery;
     this.removeStopWord = removeStopWord;
   }
 
-  @Override
-  public ScoredDocuments rerank(ScoredDocuments docs, RerankerContext context) {
-    assert(docs.documents.length == docs.scores.length);
 
-    IndexSearcher searcher = context.getIndexSearcher();
-    FeatureVector rm3 = estimateRM3Model(docs, context);
-
-    Query finalQuery = buildFeedbackQuery(context,rm3);
-
-    TopDocs rs;
-    try {
-      // Figure out how to break the scoring ties.
-      if (context.getSearchArgs().arbitraryScoreTieBreak) {
-        rs = searcher.search(finalQuery, context.getSearchArgs().hits);
-      } else if (context.getSearchArgs().searchtweets) {
-        rs = searcher.search(finalQuery, context.getSearchArgs().hits, BREAK_SCORE_TIES_BY_TWEETID, true, true);
-      } else {
-        rs = searcher.search(finalQuery, context.getSearchArgs().hits, BREAK_SCORE_TIES_BY_DOCID, true, true);
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-      return docs;
-    }
-
-    return ScoredDocuments.fromTopDocs(rs, searcher);
-  }
-
-  protected FeatureVector estimateRM3Model(ScoredDocuments docs, RerankerContext context) {
-
-    FeatureVector qfv = getQfv(context);
-
-    FeatureVector rm = estimateRelevanceModel(docs, context.getIndexSearcher().getIndexReader(), context.getSearchArgs().searchtweets);
-
-    rm = FeatureVector.interpolate(qfv, rm, originalQueryWeight);
-    return rm;
-  }
-
-  protected FeatureVector getQfv(RerankerContext context) {
+  private FeatureVector getQfv(RerankerContext context) {
     return FeatureVector.fromTerms(AnalyzerUtils.tokenize(analyzer, context.getQueryText())).scaleToUnitL1Norm();
-  }
-
-  protected FeatureVector estimateRM3Model(FeatureVector qfv, FeatureVector rm) {
-    rm = FeatureVector.interpolate(qfv, rm, originalQueryWeight);
-    return rm;
-  }
-
-
-  protected FeatureVector estimateRM3Model(String[] contents, float[] scores, RerankerContext context) {
-    FeatureVector qfv = getQfv(context);
-    FeatureVector rm = estimateRelevanceModel(scores,contents, context.getIndexSearcher().getIndexReader(), context.getSearchArgs().searchtweets);
-    rm = FeatureVector.interpolate(qfv, rm, originalQueryWeight);
-    return rm;
   }
 
   protected Query buildFeedbackQuery(RerankerContext context, FeatureVector rm) {
@@ -185,15 +113,6 @@ public class Rm3Reranker implements Reranker {
     return estimateRelevanceModel(docs.scores,docvectors);
   }
 
-  public float sum(float[] values){
-    float sum = 0.0f;
-
-    for (float v : values){
-      sum += v;
-    }
-    return sum;
-  }
-
   protected FeatureVector estimateRelevanceModel(float[] scores, FeatureVector[] docvectors) {
     Set<String> vocab = getVocab(docvectors);
     // Precompute the norms once and cache templates.
@@ -206,22 +125,9 @@ public class Rm3Reranker implements Reranker {
         // Avoids zero-length feedback documents, which causes division by zero when computing term weights.
         // Zero-length feedback documents occur (e.g., with CAR17) when a document has only terms
         // that accents (which are indexed, but not selected for feedback).
-        if (scores[i] == 0.00f){
-          LOG.warn("Document q's score can not be zero ");
-          continue;
-        }
-
         if (norms[i] > 0.001f) {
           fbWeight += (docvectors[i].getFeatureWeight(term) / norms[i]) * scores[i];
-          if (Double.isInfinite(fbWeight)){
-            LOG.warn(("fbWeight can not be Infinity " + fbWeight));
-          }
-
         }
-      }
-
-      if (Double.isInfinite(fbWeight)){
-        LOG.warn(("fbWeight can not be Infinity " + fbWeight));
       }
       f.addFeatureWeight(term, fbWeight);
     }
@@ -233,7 +139,7 @@ public class Rm3Reranker implements Reranker {
   }
 
   public FeatureVector estimateRelevanceModel(float[] scores, String[] contents, IndexReader reader, boolean tweetsearch) {
-     return estimateRelevanceModel(scores,buildDocVectors(contents,reader,tweetsearch));
+    return estimateRelevanceModel(scores,buildDocVectors(contents,reader,tweetsearch));
   }
 
   protected float[] computeNorms(FeatureVector[] docvectors) {
@@ -281,7 +187,7 @@ public class Rm3Reranker implements Reranker {
             return false;
           }
         }
-        ).collect(Collectors.toList());
+    ).collect(Collectors.toList());
   }
 
   private boolean isStopword(String term, IndexReader reader, boolean tweetsearch, int numDocs) throws IOException {
@@ -319,7 +225,7 @@ public class Rm3Reranker implements Reranker {
     //
     // With both values, we obtained effectiveness pretty close to the old values with the
     // custom stopwords list.
-    int df = reader.docFreq(new Term(FIELD_BODY, term));
+    int df = reader.docFreq(new Term(field, term));
     float ratio = (float) df / numDocs;
     if (tweetsearch) {
       if (numDocs > 100000000) { // Probably Tweets2013
@@ -331,10 +237,6 @@ public class Rm3Reranker implements Reranker {
     return false;
   }
 
-  @Override
-  public String tag() {
-    return "Rm3(fbDocs="+fbDocs+",fbTerms="+fbTerms+",originalQueryWeight:"+originalQueryWeight+")";
-  }
 
   FeatureVector[] buildDocVectors(ScoredDocuments docs, IndexReader reader, boolean tweetsearch){
     int numdocs = docs.documents.length < fbDocs ? docs.documents.length : fbDocs;

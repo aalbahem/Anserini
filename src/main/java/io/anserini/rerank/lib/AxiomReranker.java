@@ -82,7 +82,7 @@ public class AxiomReranker<T> implements Reranker<T> {
                                               // from a file. The file can be obtained by running
                                               // `IndexUtils -index /path/to/index -dumpAllDocids GZ`
 
-  private final int R; // number of top documents in initial results
+  private final int R; // number of top documents in initial templates
   private final int N; // factor that used in extracting random documents, we will extract (N-1)*R randomly select documents
   private final int K = 1000; // top similar terms
   private final int M; // number of expansion terms
@@ -249,7 +249,7 @@ public class AxiomReranker<T> implements Reranker<T> {
    * If the external reranking context is not null we will first search against the external
    * index and return the top ranked documents.
    *
-   * @param docs The initial ranking results against target index. We will return them if external
+   * @param docs The initial ranking templates against target index. We will return them if external
    *             index is null.
    *
    * @return Top ranked ScoredDocuments from searching external index
@@ -279,12 +279,12 @@ public class AxiomReranker<T> implements Reranker<T> {
   }
 
   /**
-   * Select {@code R*N} docs from the ranking results and the index as the reranking pool.
+   * Select {@code R*N} docs from the ranking templates and the index as the reranking pool.
    * The process is:
    * 1. Keep the top R documents in the original ranking list
    * 2. Randomly pick {@code (N-1)*R} documents from the rest of the index so in total we have R*M documents
    *
-   * @param docs The initial ranking results
+   * @param docs The initial ranking templates
    * @param context An instance of RerankerContext
    * @return a Set of {@code R*N} document Ids
    */

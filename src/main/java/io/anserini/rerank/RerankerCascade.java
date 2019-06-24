@@ -41,7 +41,7 @@ public class RerankerCascade {
    *
    * @param docs input documents
    * @param context reranker context
-   * @return reranked results
+   * @return reranked templates
    */
   @SuppressWarnings("unchecked")
   public ScoredDocuments run(ScoredDocuments docs, RerankerContext context) {

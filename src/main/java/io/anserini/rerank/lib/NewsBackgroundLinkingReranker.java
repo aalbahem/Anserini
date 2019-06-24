@@ -52,7 +52,7 @@ public class NewsBackgroundLinkingReranker implements Reranker {
       docsVectorsMap.add(convertDocVectorToMap(reader, docid));
     }
     
-    // remove the duplicates: 1. the same doc with the query doc 2. duplicated docs in the results
+    // remove the duplicates: 1. the same doc with the query doc 2. duplicated docs in the templates
     Set<Integer> duplicates = new HashSet<>();
     for (int i = 0; i < docs.documents.length; i++) {
       if (duplicates.contains(i)) continue;
