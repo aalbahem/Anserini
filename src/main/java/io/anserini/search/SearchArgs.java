@@ -284,4 +284,47 @@ public class SearchArgs {
 
   @Option(name = "-qid_queries", metaVar = "[file]", usage="query id - query mapping file")
   public String qid_queries = "";
+
+
+  // CLRM3 Options, same as the options of RM3
+  @Option(name = "-ll", usage = "use Log-Logistic query expansion model")
+  public boolean ll = false;
+
+  @Option(name = "-ll.c", handler = StringArrayOptionHandler.class,
+      usage = "LL parameter: the c parameter that controls model")
+  public String[] ll_c = new String[] {"0.5"};
+
+  @Option(name = "-rf.fbTerms", handler = StringArrayOptionHandler.class,
+      usage = "RF parameter: number of expansion terms")
+  public String[] rf_fbTerms = new String[] {"10"};
+
+  @Option(name = "-rf.fbDocs", handler = StringArrayOptionHandler.class,
+      usage = "RF parameter: number of documents")
+  public String[] rf__fbDocs = new String[] {"10"};
+
+  @Option(name = "-rf.originalQueryWeight", handler = StringArrayOptionHandler.class,
+      usage = "RF parameter: weight to assign to the original query")
+  public String[] rf__originalQueryWeight = new String[] {"0.5"};
+
+  @Option(name = "-rf.outputQuery",
+      usage = "RF parameter: print original and expanded queries")
+  public boolean rf__outputQuery = false;
+
+  @Option(name = "-rf.stopWord",
+      usage = "RF parameter: remove stop words")
+  public boolean rf__stopword = false;
+
+  @Option(name = "-rf.pruneDocTerm",
+      usage = "RF parameter: prune a document terms")
+  public boolean rf__pruneDocTerm = false;
+
+  @Option(name = "-rf.pruneModelTerm",
+      usage = "RF parameter: prune a the final model terms")
+  public boolean rf__pruneModel = false;
+
+  @Option(name = "-rf.normalize",
+      usage = "RF parameter: normalize a the final model terms")
+  public boolean rf__normalize = false;
+
+
 }

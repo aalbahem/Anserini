@@ -23,6 +23,7 @@ import io.anserini.index.generator.WapoGenerator;
 import io.anserini.rerank.RerankerCascade;
 import io.anserini.rerank.RerankerContext;
 import io.anserini.rerank.ScoredDocuments;
+import io.anserini.rerank.factories.RFRerankerkFactory;
 import io.anserini.rerank.lib.*;
 import io.anserini.search.query.BagOfWordsQueryGenerator;
 import io.anserini.search.query.SdmQueryGenerator;
@@ -225,7 +226,7 @@ public final class SearchCollection implements Closeable {
       qc = QueryConstructor.BagOfTerms;
     }
   
-    isRerank = args.rm3 || args.axiom || args.bm25prf || args.clrm3;
+    isRerank = args.rm3 || args.axiom || args.bm25prf || args.clrm3||args.ll;
   }
 
   @Override
@@ -342,6 +343,13 @@ public final class SearchCollection implements Closeable {
           }
         }
       }
+    }else if (args.ll){
+      LOG.info("Rerank with Log-Logistic Feedback model");
+      RerankerCascade cascade = new RerankerCascade();
+      RFReranker reranker = (RFReranker) new RFRerankerkFactory().create(analyzer,FIELD_BODY);
+      cascade.add(reranker);
+      cascade.add(new ScoreTiesAdjusterReranker());
+      cascades.put("ll", cascade);
     }
 
     else {

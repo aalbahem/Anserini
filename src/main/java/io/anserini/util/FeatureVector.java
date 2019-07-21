@@ -40,6 +40,15 @@ public class FeatureVector {
     }
   }
 
+  /**
+   * Replaces the term <b>term</b>'s weight using <b>newWeight</b>. If the term already exists, it will replace its current weight.
+   * @param term
+   * @param newWeight
+   */
+  public void updateFeatureWeight(String term, float newWeight) {
+    features.put(term, newWeight);
+  }
+
   public FeatureVector pruneToSize(int k) {
     List<KeyValuePair> pairs = getOrderedFeatures();
     Object2FloatOpenHashMap<String> pruned = new Object2FloatOpenHashMap<String>();
@@ -105,6 +114,14 @@ public class FeatureVector {
     return norm;
   }
 
+  public double computeMaxNorm() {
+    double norm = Float.MIN_VALUE;
+    for (String term : features.keySet()) {
+      norm = features.get(term)>norm?features.get(term):norm;
+    }
+    return norm;
+  }
+
   public static FeatureVector fromTerms(List<String> terms) {
     FeatureVector f = new FeatureVector();
     for (String t : terms) {
@@ -166,6 +183,20 @@ public class FeatureVector {
       String feature = features.next();
       float weight = (float) (xWeight * x.getFeatureWeight(feature) + (1.0 - xWeight)
           * y.getFeatureWeight(feature));
+      z.addFeatureWeight(feature, weight);
+    }
+    return z;
+  }
+
+  public static FeatureVector linearCombineation(FeatureVector x, FeatureVector y, float xWeight, float yWeight) {
+    FeatureVector z = new FeatureVector();
+    Set<String> vocab = new HashSet<String>();
+    vocab.addAll(x.getFeatures());
+    vocab.addAll(y.getFeatures());
+    Iterator<String> features = vocab.iterator();
+    while (features.hasNext()) {
+      String feature = features.next();
+      float weight = (float) (xWeight * x.getFeatureWeight(feature) + (yWeight) * y.getFeatureWeight(feature));
       z.addFeatureWeight(feature, weight);
     }
     return z;
