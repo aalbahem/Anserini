@@ -141,6 +141,22 @@ public abstract class FeedbackModel {
     return finalQuery;
   }
 
+  public Query buildFeedbackQuery(FeatureVector model){
+    BooleanQuery.Builder feedbackQueryBuilder = new BooleanQuery.Builder();
+
+    Iterator<String> terms = model.iterator();
+    while (terms.hasNext()) {
+      String term = terms.next();
+      float prob = model.getFeatureWeight(term);
+      feedbackQueryBuilder.add(new BoostQuery(new TermQuery(new Term(this.field, term)), prob), BooleanClause.Occur.SHOULD);
+    }
+
+
+
+    Query feedbackQuery = feedbackQueryBuilder.build();
+    return feedbackQuery;
+  }
+
   public FeatureVector estimate(String query, ScoredDocuments docs, IndexReader reader, boolean tweetsearch) {
     FeatureVector[] docvectors = buildDocVectors(docs,reader,tweetsearch);
     return estimate(query,docvectors,docs.scores);
@@ -181,13 +197,6 @@ public abstract class FeedbackModel {
         f.addFeatureWeight(term, (float) freq);
       }
 
-      if (this.prunDocTerm){
-        f.pruneToSize(fbDocs);
-      }
-
-      if (this.normalize){
-        f.scaleToUnitL1Norm();
-      }
     } catch (Exception e) {
       e.printStackTrace();
       // Return empty feature vector
@@ -276,15 +285,6 @@ public abstract class FeedbackModel {
           docVector = createdFeatureVector(termVector , reader, tweetsearch);
         }
 
-
-        if (this.prunDocTerm){
-          docVector.pruneToSize(fbDocs);
-        }
-
-        if (this.normalize){
-          docVector.scaleToUnitL1Norm();
-        }
-
         docvectors[i] = docVector;
       } catch (IOException e) {
         e.printStackTrace();
@@ -320,15 +320,6 @@ public abstract class FeedbackModel {
           throw new IOException();
         }
         docVector = FeatureVector.fromTerms(filteredWords);
-
-
-        if (this.prunDocTerm){
-          docVector.pruneToSize(fbDocs);
-        }
-
-        if (this.normalize){
-          docVector.scaleToUnitL1Norm();
-        }
 
         docvectors[i] = docVector;
       } catch (IOException e) {
