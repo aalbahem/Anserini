@@ -16,6 +16,7 @@
 
 package io.anserini.rerank.lib;
 
+import edu.stanford.nlp.parser.lexparser.RerankerQuery;
 import io.anserini.index.generator.LuceneDocumentGenerator;
 import io.anserini.rerank.RerankerContext;
 import io.anserini.rerank.ScoredDocuments;
@@ -24,11 +25,11 @@ import io.anserini.util.FeatureVector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import static io.anserini.search.SearchCollection.BREAK_SCORE_TIES_BY_DOCID;
 import static io.anserini.search.SearchCollection.BREAK_SCORE_TIES_BY_TWEETID;
@@ -50,6 +51,7 @@ public class CondensedListRelevanceReranker extends Rm3Reranker {
   @Override
   public ScoredDocuments rerank(ScoredDocuments docs, RerankerContext context) {
 
+
     assert (docs.documents.length == docs.scores.length);
 
     IndexSearcher searcher = context.getIndexSearcher();
@@ -63,8 +65,10 @@ public class CondensedListRelevanceReranker extends Rm3Reranker {
           getFieldValues(docs, LuceneDocumentGenerator.FIELD_ID, searcher));
       rs = rescoreWithTieBreaker(finalQuery,filterQuery,context,searcher);
 
+
     } else if (this.condenseListGenerator.equals(HIT_RESCORER)){
       QueryRescorer rm3Rescoer = new RM3QueryRescorer(finalQuery);
+
 
       try {
          rs = rm3Rescoer.rescore(searcher,docs.topDocs,context.getSearchArgs().hits);

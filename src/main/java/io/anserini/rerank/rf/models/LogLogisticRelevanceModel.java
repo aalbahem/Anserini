@@ -22,7 +22,7 @@ public class LogLogisticRelevanceModel extends FeedbackModel {
 
   private static final Logger LOG = LogManager.getLogger(LogLogisticRelevanceModel.class);
 
-  private double c = 0.2f;
+  private float c = 0.2f;
 
   public LogLogisticRelevanceModel(Analyzer analyzer, String field, float c,
       FeedbackModelConfig config) {
@@ -44,21 +44,22 @@ public class LogLogisticRelevanceModel extends FeedbackModel {
     try {
       collectionStatistics = getIndexSearcher().collectionStatistics(getField());
       termStatisticsList = new HashMap<>();
-      for (String term : vocab){
-        TermStates termContext =TermStates.build(
-            getIndexSearcher().getIndexReader().getContext(),new Term(getField(),term),true);
-        termStatisticsList.put(term, getIndexSearcher()
-            .termStatistics(new Term(getField(),new BytesRef(term)),termContext));
-      }
+      collectTermStatitics(vocab,termStatisticsList);
 
       for (String term : vocab) {
         LLFeedbakWegith llFeedbakWegith = new LLFeedbakWegith((float)c,collectionStatistics,termStatisticsList.get(term));
         f.addFeatureWeight(term,(float)llFeedbakWegith.computeFW(term,norms,docvectors));
       }
 
+
+      if (getConfig().pruneModel){
+        f.pruneToSize(getFbTerms());
+      }
+
       if (getConfig().normalize){
         f.scaleToUnitL1Norm();
       }
+
     } catch (IOException e) {
       e.printStackTrace();
       LOG.warn("Failed to extract LLmodel");

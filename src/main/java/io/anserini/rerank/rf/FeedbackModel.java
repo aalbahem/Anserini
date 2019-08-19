@@ -106,7 +106,11 @@ public abstract class FeedbackModel {
 
 
   public FeatureVector getQfv(RerankerContext context) {
-    return FeatureVector.fromTerms(AnalyzerUtils.tokenize(analyzer, context.getQueryText())).scaleToUnitL1Norm();
+    return getQfv(context.getQueryText());
+  }
+
+  public FeatureVector getQfv (String query){
+    return FeatureVector.fromTerms(AnalyzerUtils.tokenize(analyzer, query)).scaleToUnitL1Norm();
   }
 
   public Query buildFeedbackQuery(RerankerContext context, FeatureVector model) {
