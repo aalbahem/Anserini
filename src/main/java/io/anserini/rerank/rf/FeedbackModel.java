@@ -339,14 +339,24 @@ public abstract class FeedbackModel {
        {
     for (String term : vocab){
       TermStates termContext = null;
+      TermStatistics termStatistics = null;
+
       try {
         termContext = TermStates.build(
             getIndexSearcher().getIndexReader().getContext(),new Term(getField(),term),true);
-        termStatisticsList.put(term, getIndexSearcher()
-            .termStatistics(new Term(getField(),new BytesRef(term)),termContext));
+        termStatistics = getIndexSearcher()
+            .termStatistics(new Term(getField(),new BytesRef(term)),termContext);
+
       } catch (IOException e) {
         e.printStackTrace();
       }
+
+      if (termStatistics ==null){
+        LOG.warn(term + " does not exists on index ");
+        termStatistics = new TermStatistics(new BytesRef(term),1,1);
+      }
+
+      termStatisticsList.put(term,termStatistics);
 
     }
   }
