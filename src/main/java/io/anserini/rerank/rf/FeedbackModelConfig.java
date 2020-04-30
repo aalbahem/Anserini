@@ -12,6 +12,8 @@ public class FeedbackModelConfig {
   public final boolean pruneModel;
   public final boolean normalize;
 
+
+
   public FeedbackModelConfig(int fbTerms, int fbDocs,
       float originalQueryWeight, boolean outputQuery, boolean removeStopWord,
       boolean prunDocTerm, boolean pruneModel, boolean normalize) {

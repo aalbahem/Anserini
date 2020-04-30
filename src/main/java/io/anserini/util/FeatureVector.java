@@ -188,6 +188,30 @@ public class FeatureVector {
     return z;
   }
 
+  public static FeatureVector ariMean(FeatureVector[] vectors) {
+    FeatureVector z = new FeatureVector();
+
+    for (FeatureVector vector : vectors){
+      Set<String> features = vector.getFeatures();
+      for (String feature: features){
+        z.addFeatureWeight(feature, vector.getFeatureWeight(feature));
+      }
+    }
+
+    return multiply(z,1.0f/vectors.length);
+  }
+
+  public static FeatureVector multiply(FeatureVector vector, float multiplier) {
+
+    FeatureVector featureVector = new FeatureVector();
+
+    for (String f : vector.getFeatures()){
+      featureVector.addFeatureWeight(f, (vector.getFeatureWeight(f) * multiplier));
+    }
+
+    return featureVector;
+  }
+
   public static FeatureVector linearCombineation(FeatureVector x, FeatureVector y, float xWeight, float yWeight) {
     FeatureVector z = new FeatureVector();
     Set<String> vocab = new HashSet<String>();
