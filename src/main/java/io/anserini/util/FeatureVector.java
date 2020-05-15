@@ -122,12 +122,18 @@ public class FeatureVector {
     return norm;
   }
 
-  public static FeatureVector fromTerms(List<String> terms) {
+  public static FeatureVector fromTerms(List<String> terms, boolean filterWords) {
     FeatureVector f = new FeatureVector();
     for (String t : terms) {
       f.addFeatureWeight(t, 1.0f);
     }
+
     return f;
+  }
+
+
+  public static FeatureVector fromTerms(List<String> terms) {
+    return fromTerms(terms,true);
   }
 
   // VIEWING

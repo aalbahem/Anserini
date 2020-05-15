@@ -224,6 +224,39 @@ public abstract class FeedbackModel {
     ).collect(Collectors.toList());
   }
 
+  private List<String> filterSmallSizeWords(List<String> terms) throws IOException {
+    return terms.stream().filter(term -> {
+                return !(term.length() <2 ||term.length() > 20) ;
+
+    }
+    ).collect(Collectors.toList());
+  }
+
+
+
+  private List<String> filterNonHumanwords(List<String> terms) throws IOException {
+    Set<String> htmlTags = new HashSet<>(Arrays.asList("html","http","href","h1","h2","h3","li","ul"));
+    return terms.stream().filter(term -> {
+              return (term.matches("[a-z0-9]+") || term.equals("http") || term.equals("href") ) ;
+            }
+    ).collect(Collectors.toList());
+  }
+
+  private List<String> filterHtmlTags(List<String> terms) throws IOException {
+    Set<String> htmlTags = new HashSet<>(Arrays.asList("html","http","href","h1","h2","h3","li","ul"));
+    return terms.stream().filter(term -> {
+             return !htmlTags.contains(term);
+            }
+    ).collect(Collectors.toList());
+  }
+
+  private List<String> filterLongDigitWords(List<String> terms) {
+    return terms.stream().filter(term -> {
+              return (!term.matches("[0-9]{5,}")) ;
+            }
+    ).collect(Collectors.toList());
+  }
+
   private boolean isStopword(String term, IndexReader reader, boolean tweetsearch, int numDocs) throws IOException {
     // This seemingly arbitrary logic needs some explanation. See following PR for details:
     //   https://github.com/castorini/Anserini/pull/289
@@ -283,7 +316,11 @@ public abstract class FeedbackModel {
         if (termVector==null){
           String text = docs.documents[i].get(field);
           List<String> filteredWords = filterStopwords(
-              AnalyzerUtils.tokenize(analyzer,text),reader,tweetsearch,numdocs);
+              AnalyzerUtils.tokenize(analyzer,text),reader,tweetsearch,reader.numDocs());
+          filteredWords = filterNonHumanwords(filteredWords);
+          filteredWords = filterLongDigitWords(filteredWords);
+          filteredWords = filterSmallSizeWords(filteredWords);
+          filteredWords = filterHtmlTags(filteredWords);
           docVector = FeatureVector.fromTerms(filteredWords);
         }else{
           docVector = createdFeatureVector(termVector , reader, tweetsearch);
